@@ -91,7 +91,17 @@ const mxDelete = id         => sb("DELETE", `${MX_TABLE}?id=eq.${id}`);
 const SEVERITY_OPTIONS = ["Critical","High","Medium","Low"];
 const RTO_OPTIONS = ["< 1 hour","1-4 hours","4-24 hours","1-3 days","3-7 days","7+ days"];
 
-const getMatrixDefaults = (bucketName) => {
+const MATRIX_EXAMPLES = {
+  "Law enforcement visits (ICE, Police, FBI)": {severity:"Critical",rto:"< 1 hour",response_lead:"Director of Security",immediate_actions:"1. Do not obstruct officers. 2. Request badge IDs and warrant. 3. Contact Legal immediately. 4. Escort officers to designated area. 5. Document everything.",communication:"Legal team via phone immediately; HR notified within 15 min; Leadership briefed within 30 min; staff memo if needed within 1 hour",escalation_path:"Security Lead → Legal Director → COO → CEO → External Counsel"},
+  "Cyber attack": {severity:"Critical",rto:"1-4 hours",response_lead:"IT Security Manager",immediate_actions:"1. Isolate affected systems from network. 2. Activate incident response plan. 3. Preserve forensic evidence. 4. Notify IT leadership. 5. Engage external cybersecurity firm if needed.",communication:"IT team via Slack war room immediately; Leadership via phone within 15 min; affected staff via email within 1 hour; clients if data breach confirmed",escalation_path:"IT Security → CTO → CEO → External Cyber Firm → Legal (if breach)"},
+  "International political unrest affecting employees (Venezuela, Mexico, Iran, etc.)": {severity:"Medium",rto:"1-3 days",response_lead:"HR Director",immediate_actions:"1. Identify affected employees by location/nationality. 2. Send wellness check communication. 3. Offer EAP resources. 4. Assess impact on case workload. 5. Coordinate flexible work arrangements.",communication:"HR direct outreach to affected employees within 2 hours; leadership briefed same day; all-staff sensitivity memo if widespread",escalation_path:"HR Director → Legal (case impact) → COO → CEO"},
+  "Executive announcements or presidential statements on immigration": {severity:"Medium",rto:"1-3 days",response_lead:"Legal Director",immediate_actions:"1. Legal team reviews announcement impact on active cases. 2. Draft client-facing FAQ. 3. Prepare internal talking points. 4. Brief client-facing staff. 5. Monitor for follow-up developments.",communication:"Internal legal memo within 2 hours; client FAQ via email within 24 hours; social media statement coordinated with Marketing",escalation_path:"Legal Director → Marketing Director → CEO → External Immigration Counsel"},
+  "Scams using the Lisinski name or impersonating Angel (clients being defrauded)": {severity:"High",rto:"4-24 hours",response_lead:"Marketing Director",immediate_actions:"1. Document the scam (screenshots, URLs, phone numbers). 2. Report to FTC and relevant authorities. 3. Issue client warning via email and social media. 4. Contact platforms to take down fraudulent accounts. 5. Brief front desk and intake on how to handle client inquiries.",communication:"Internal alert to all staff within 1 hour; client warning blast via email and social media within 4 hours; media statement if press inquiries arise",escalation_path:"Marketing Director → Legal Director → CEO → External PR Firm (if needed)"},
+  "Building damage (water, gas, fire on business or non-business hours)": {severity:"High",rto:"4-24 hours",response_lead:"Operations Manager",immediate_actions:"1. Ensure employee safety and evacuate if needed. 2. Call emergency services (fire/gas). 3. Contact building management. 4. Assess damage and document with photos. 5. Activate remote work plan if office unusable.",communication:"All-staff alert via mass text within 15 min; leadership briefed via phone; building management and insurance notified same day",escalation_path:"Operations Manager → Facilities Lead → COO → CEO → Insurance / Contractors"},
+};
+
+const getMatrixDefaults = (bucketName, incidentName) => {
+  if (MATRIX_EXAMPLES[incidentName]) return MATRIX_EXAMPLES[incidentName];
   const map = {
     "Security & Physical Safety":      {severity:"Critical", rto:"< 1 hour"},
     "Technology & Operations":         {severity:"High",     rto:"1-4 hours"},
@@ -100,7 +110,8 @@ const getMatrixDefaults = (bucketName) => {
     "Reputation & Brand":              {severity:"High",     rto:"4-24 hours"},
     "Facilities & Vendor Disruptions": {severity:"High",     rto:"4-24 hours"},
   };
-  return map[bucketName] || {severity:"Medium", rto:"4-24 hours"};
+  const base = map[bucketName] || {severity:"Medium", rto:"4-24 hours"};
+  return {...base, response_lead:"", immediate_actions:"", communication:"", escalation_path:""};
 };
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
@@ -178,6 +189,7 @@ function App() {
   const [activeTab,      setActiveTab]      = useState("buckets");
   const [matrixData,     setMatrixData]     = useState([]);
   const [matrixEdit,     setMatrixEdit]     = useState(null);
+  const [matrixOpenEdit, setMatrixOpenEdit] = useState(()=>localStorage.getItem("matrixOpenEdit")==="true");
   const refs = useRef({});
 
   const toast$ = (msg, err=false) => { setToast({msg,err}); setTimeout(()=>setToast(null),3000); };
@@ -216,8 +228,8 @@ function App() {
         const key = `${b.id}::${item}`;
         expectedKeys.add(key);
         if (!existingKeys.has(key)) {
-          const defs = getMatrixDefaults(b.name);
-          toInsert.push({bucket_id:b.id, incident_name:item, severity:defs.severity, rto:defs.rto, response_lead:"", immediate_actions:"", communication:"", escalation_path:""});
+          const defs = getMatrixDefaults(b.name, item);
+          toInsert.push({bucket_id:b.id, incident_name:item, severity:defs.severity, rto:defs.rto, response_lead:defs.response_lead||"", immediate_actions:defs.immediate_actions||"", communication:defs.communication||"", escalation_path:defs.escalation_path||""});
         }
       });
     });
@@ -711,7 +723,8 @@ function App() {
             <h2 style={{fontSize:18,fontWeight:800,color:"#0F172A"}}>Incident Matrix</h2>
             <p style={{fontSize:13,color:"#64748B",marginTop:2}}>Response plan for every incident across all buckets</p>
           </div>
-          <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            {isAdmin&&<button onClick={()=>{const v=!matrixOpenEdit;setMatrixOpenEdit(v);localStorage.setItem("matrixOpenEdit",v);toast$(v?"All users can now edit the matrix":"Only admins can edit the matrix");}} style={{background:matrixOpenEdit?"#16A34A":"#fff",border:matrixOpenEdit?"1.5px solid #16A34A":"1.5px solid #E2E8F0",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:matrixOpenEdit?"#fff":"#475569"}}>{matrixOpenEdit?"Editing: Everyone":"Editing: Admin Only"}</button>}
             <button onClick={exportMatrixCSV} style={{background:"#fff",border:"1.5px solid #E2E8F0",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#475569"}}>Export CSV</button>
             <button onClick={()=>window.print()} style={{background:"#fff",border:"1.5px solid #E2E8F0",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#475569"}}>Print</button>
           </div>
@@ -764,7 +777,7 @@ function App() {
                           const isEditing = (field) => matrixEdit && matrixEdit.id===row.id && matrixEdit.field===field;
                           const cellStyle = (field) => ({
                             padding:"8px 12px",borderBottom:"1px solid #F1F5F9",
-                            cursor:isAdmin?"pointer":"default",
+                            cursor:(isAdmin||matrixOpenEdit)?"pointer":"default",
                             background:isEditing(field)?"#FFFBEB":"transparent",
                             verticalAlign:"top",lineHeight:"1.4",maxWidth:220,
                           });
@@ -791,7 +804,7 @@ function App() {
                             if(field==="rto") return <span style={{fontSize:12,fontWeight:500,color:"#475569"}}>{value||"—"}</span>;
                             return <span style={{fontSize:12.5,color:value?"#334155":"#CBD5E1",whiteSpace:"pre-wrap"}}>{value||"—"}</span>;
                           };
-                          const startEdit = (field, value) => { if(isAdmin) setMatrixEdit({id:row.id, field, value: value||""}); };
+                          const startEdit = (field, value) => { if(isAdmin||matrixOpenEdit) setMatrixEdit({id:row.id, field, value: value||""}); };
 
                           return(
                             <tr key={row.id} style={{borderLeft:`4px solid ${c.badge}`}}>
@@ -813,7 +826,7 @@ function App() {
             </table>
           </div>
         )}
-        {isAdmin&&matrixData.length>0&&<p style={{fontSize:11.5,color:"#94A3B8",marginTop:12,textAlign:"center"}}>Click any cell to edit (admin only) &middot; Changes save automatically</p>}
+        {matrixData.length>0&&<p style={{fontSize:11.5,color:"#94A3B8",marginTop:12,textAlign:"center"}}>{(isAdmin||matrixOpenEdit)?"Click any cell to edit \u00b7 Changes save automatically":"View only \u00b7 Ask an admin to enable editing"}</p>}
       </div>}
 
       {/* ── SIGNED OFF TAB ── */}
