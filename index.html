@@ -190,6 +190,7 @@ function App() {
   const [matrixData,     setMatrixData]     = useState([]);
   const [matrixEdit,     setMatrixEdit]     = useState(null);
   const [matrixOpenEdit, setMatrixOpenEdit] = useState(()=>localStorage.getItem("matrixOpenEdit")==="true");
+  const [matrixHelp,     setMatrixHelp]     = useState(false);
   const refs = useRef({});
 
   const toast$ = (msg, err=false) => { setToast({msg,err}); setTimeout(()=>setToast(null),3000); };
@@ -725,10 +726,46 @@ function App() {
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
             {isAdmin&&<button onClick={()=>{const v=!matrixOpenEdit;setMatrixOpenEdit(v);localStorage.setItem("matrixOpenEdit",v);toast$(v?"All users can now edit the matrix":"Only admins can edit the matrix");}} style={{background:matrixOpenEdit?"#16A34A":"#fff",border:matrixOpenEdit?"1.5px solid #16A34A":"1.5px solid #E2E8F0",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:matrixOpenEdit?"#fff":"#475569"}}>{matrixOpenEdit?"Editing: Everyone":"Editing: Admin Only"}</button>}
+            <button onClick={()=>setMatrixHelp(true)} style={{background:"#EFF6FF",border:"1.5px solid #BFDBFE",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#2563EB"}}>? Column Guide</button>
             <button onClick={exportMatrixCSV} style={{background:"#fff",border:"1.5px solid #E2E8F0",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#475569"}}>Export CSV</button>
             <button onClick={()=>window.print()} style={{background:"#fff",border:"1.5px solid #E2E8F0",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#475569"}}>Print</button>
           </div>
         </div>
+
+        {/* Column Guide Modal */}
+        {matrixHelp&&<div onClick={()=>setMatrixHelp(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:16,maxWidth:620,width:"100%",maxHeight:"85vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+            <div style={{padding:"20px 24px",borderBottom:"1.5px solid #E2E8F0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <h3 style={{fontSize:16,fontWeight:800,color:"#0F172A",margin:0}}>Incident Matrix — Column Guide</h3>
+              <button onClick={()=>setMatrixHelp(false)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#94A3B8",padding:4}}>&times;</button>
+            </div>
+            <div style={{padding:"20px 24px",display:"flex",flexDirection:"column",gap:18}}>
+              {[
+                {icon:"📋",title:"Incident",desc:"The name of the incident as defined in the corresponding bucket. This column is read-only and automatically syncs when incidents are added, edited, or removed from the Buckets tab."},
+                {icon:"🔴",title:"Severity",color:"#DC2626",desc:"Classifies how critical the incident is to operations, safety, or reputation. Use this to prioritize response efforts and resource allocation.",options:["Critical — Immediate threat to life, safety, or core operations. Requires all-hands response.","High — Significant disruption or risk. Requires rapid coordinated response within hours.","Medium — Moderate impact with manageable disruption. Requires planned response within 1-3 days.","Low — Minor impact. Can be addressed through standard procedures."]},
+                {icon:"👤",title:"Response Team Lead",desc:"The specific role or individual responsible for coordinating the response to this incident. This is distinct from the bucket-level owner — it identifies who personally leads the response, makes decisions, and reports progress during the incident."},
+                {icon:"⚡",title:"Immediate Actions",desc:"The first steps to take within the first 30 minutes of the incident being identified. These should be numbered, specific, and actionable — think of them as a quick-reference checklist that anyone can follow under pressure. Include calls to make, systems to activate, and people to notify."},
+                {icon:"📢",title:"Communication Protocol",desc:"Defines who gets notified, through what channel, and in what timeframe. Should cover internal communication (staff, leadership) and external communication (clients, media, authorities) as applicable. Include specific channels (phone, email, mass text, Slack) and timing expectations."},
+                {icon:"⬆️",title:"Escalation Path",desc:"The chain of command if the situation worsens, the primary lead is unavailable, or the incident exceeds the initial response capacity. Format as a clear sequence (e.g., Manager → Director → VP → CEO → External Counsel) so anyone can identify the next person to contact."},
+                {icon:"⏱️",title:"Recovery Time Objective (RTO)",color:"#475569",desc:"The target time to restore normal operations after the incident. This sets expectations for stakeholders and helps prioritize recovery efforts.",options:["< 1 hour — Life-safety or critical system incidents.","1-4 hours — Major operational disruptions.","4-24 hours — Significant but contained incidents.","1-3 days — Incidents requiring investigation or external coordination.","3-7 days — Complex recovery involving multiple teams or vendors.","7+ days — Major structural or reputational recovery."]},
+              ].map((col,i)=>(
+                <div key={i} style={{background:"#F8FAFC",borderRadius:12,padding:"14px 18px",border:"1px solid #E2E8F0"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                    <span style={{fontSize:18}}>{col.icon}</span>
+                    <span style={{fontSize:14,fontWeight:700,color:col.color||"#0F172A"}}>{col.title}</span>
+                  </div>
+                  <p style={{fontSize:13,color:"#475569",lineHeight:1.6,margin:0}}>{col.desc}</p>
+                  {col.options&&<ul style={{margin:"10px 0 0",paddingLeft:18,display:"flex",flexDirection:"column",gap:4}}>
+                    {col.options.map((o,j)=><li key={j} style={{fontSize:12.5,color:"#64748B",lineHeight:1.5}}>{o}</li>)}
+                  </ul>}
+                </div>
+              ))}
+            </div>
+            <div style={{padding:"16px 24px",borderTop:"1.5px solid #E2E8F0",textAlign:"right"}}>
+              <button onClick={()=>setMatrixHelp(false)} style={{padding:"9px 24px",borderRadius:8,border:"none",background:"#0F172A",color:"#fff",fontWeight:600,cursor:"pointer",fontSize:14}}>Got it</button>
+            </div>
+          </div>
+        </div>}
 
         {matrixData.length===0?(
           <div style={{textAlign:"center",padding:"60px 0",color:"#94A3B8"}}>
