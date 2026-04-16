@@ -14,6 +14,7 @@
   @keyframes fadein{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
   input,textarea,select{font-family:inherit}
   ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#F1F5F9}::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px}
+  @media print{.no-print{display:none!important}table{font-size:11px}td,th{border:1px solid #ccc!important;padding:4px 6px!important}}
 </style>
 </head>
 <body>
@@ -80,6 +81,27 @@ const SO_TABLE = "signoffs";
 const soLoad   = ()         => sb("GET",    `${SO_TABLE}?select=*&order=created_at.asc`);
 const soInsert = row        => sb("POST",   SO_TABLE, row);
 const soDelete = id         => sb("DELETE", `${SO_TABLE}?id=eq.${id}`);
+
+const MX_TABLE = "incident_matrix";
+const mxLoad   = ()         => sb("GET",    `${MX_TABLE}?select=*&order=bucket_id.asc,incident_name.asc`);
+const mxInsert = rows       => sb("POST",   MX_TABLE, rows);
+const mxPatch  = (id, body) => sb("PATCH",  `${MX_TABLE}?id=eq.${id}`, {...body, updated_at: new Date().toISOString()});
+const mxDelete = id         => sb("DELETE", `${MX_TABLE}?id=eq.${id}`);
+
+const SEVERITY_OPTIONS = ["Critical","High","Medium","Low"];
+const RTO_OPTIONS = ["< 1 hour","1-4 hours","4-24 hours","1-3 days","3-7 days","7+ days"];
+
+const getMatrixDefaults = (bucketName) => {
+  const map = {
+    "Security & Physical Safety":      {severity:"Critical", rto:"< 1 hour"},
+    "Technology & Operations":         {severity:"High",     rto:"1-4 hours"},
+    "Political & Social Unrest":       {severity:"Medium",   rto:"1-3 days"},
+    "Legal Issues":                    {severity:"Medium",   rto:"1-3 days"},
+    "Reputation & Brand":              {severity:"High",     rto:"4-24 hours"},
+    "Facilities & Vendor Disruptions": {severity:"High",     rto:"4-24 hours"},
+  };
+  return map[bucketName] || {severity:"Medium", rto:"4-24 hours"};
+};
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
 const fmt = ts => {
@@ -154,6 +176,8 @@ function App() {
   const [newSignoff,     setNewSignoff]     = useState({name:"",date:"",department:"",screenshot:null});
   const [viewScreenshot, setViewScreenshot] = useState(null);
   const [activeTab,      setActiveTab]      = useState("buckets");
+  const [matrixData,     setMatrixData]     = useState([]);
+  const [matrixEdit,     setMatrixEdit]     = useState(null);
   const refs = useRef({});
 
   const toast$ = (msg, err=false) => { setToast({msg,err}); setTimeout(()=>setToast(null),3000); };
@@ -171,10 +195,46 @@ function App() {
       setLoadMsg("Fetching sign-offs…");
       const soData = await soLoad().catch(()=>[]);
       setSignoffs(soData);
+      setLoadMsg("Syncing incident matrix…");
+      await syncMatrix(data);
     } catch(e) { setError(e.message); }
     setLoading(false);
   };
   useEffect(()=>{ init(); },[]);
+
+  const syncMatrix = async (bkts) => {
+    const src = bkts || buckets;
+    let existing = [];
+    let dbAvailable = true;
+    try { existing = await mxLoad(); } catch(e) { existing = []; dbAvailable = false; }
+    const existingKeys = new Set(existing.map(r=>`${r.bucket_id}::${r.incident_name}`));
+    const expectedKeys = new Set();
+    const toInsert = [];
+    let localId = -1;
+    src.forEach(b => {
+      b.items.forEach(item => {
+        const key = `${b.id}::${item}`;
+        expectedKeys.add(key);
+        if (!existingKeys.has(key)) {
+          const defs = getMatrixDefaults(b.name);
+          toInsert.push({bucket_id:b.id, incident_name:item, severity:defs.severity, rto:defs.rto, response_lead:"", immediate_actions:"", communication:"", escalation_path:""});
+        }
+      });
+    });
+    const orphaned = existing.filter(r => !expectedKeys.has(`${r.bucket_id}::${r.incident_name}`));
+    if (toInsert.length && dbAvailable) {
+      try { const inserted = await mxInsert(toInsert); existing = [...existing, ...(Array.isArray(inserted)?inserted:[inserted])]; } catch(e) {
+        toInsert.forEach(r => { existing.push({...r, id: localId--}); });
+      }
+    } else if (toInsert.length) {
+      toInsert.forEach(r => { existing.push({...r, id: localId--}); });
+    }
+    if (dbAvailable) {
+      for (const o of orphaned) { try { await mxDelete(o.id); } catch(e) {} }
+    }
+    existing = existing.filter(r => expectedKeys.has(`${r.bucket_id}::${r.incident_name}`));
+    setMatrixData(existing);
+  };
 
   const persist = async (optimisticFn, dbFn) => {
     optimisticFn();
@@ -195,10 +255,11 @@ function App() {
   const addItem = bucketId => {
     const text=(newItems[bucketId]||"").trim(); if(!text) return;
     const bk=buckets.find(b=>b.id===bucketId), updated=[...bk.items,text];
+    const updatedBuckets=buckets.map(b=>b.id===bucketId?{...b,items:updated,updated_at:new Date().toISOString()}:b);
     setNewItems(n=>({...n,[bucketId]:""}));
     persist(
-      ()=>setBuckets(bs=>bs.map(b=>b.id===bucketId?{...b,items:updated,updated_at:new Date().toISOString()}:b)),
-      ()=>dbPatch(bucketId,{items:updated})
+      ()=>setBuckets(updatedBuckets),
+      async()=>{await dbPatch(bucketId,{items:updated}); await syncMatrix(updatedBuckets);}
     );
     toast$("Item added");
   };
@@ -206,10 +267,11 @@ function App() {
   const doDeleteItem = () => {
     const {bId,idx}=delItem;
     const bk=buckets.find(b=>b.id===bId), updated=bk.items.filter((_,i)=>i!==idx);
+    const updatedBuckets=buckets.map(b=>b.id===bId?{...b,items:updated,updated_at:new Date().toISOString()}:b);
     setDelItem(null);
     persist(
-      ()=>setBuckets(bs=>bs.map(b=>b.id===bId?{...b,items:updated,updated_at:new Date().toISOString()}:b)),
-      ()=>dbPatch(bId,{items:updated})
+      ()=>setBuckets(updatedBuckets),
+      async()=>{await dbPatch(bId,{items:updated}); await syncMatrix(updatedBuckets);}
     );
     toast$("Item deleted");
   };
@@ -218,10 +280,11 @@ function App() {
     if(!editItem) return;
     const {bId,idx}=editItem, text=editText.trim(); if(!text) return;
     const bk=buckets.find(b=>b.id===bId), updated=[...bk.items]; updated[idx]=text;
+    const updatedBuckets=buckets.map(b=>b.id===bId?{...b,items:updated,updated_at:new Date().toISOString()}:b);
     setEditItem(null);
     persist(
-      ()=>setBuckets(bs=>bs.map(b=>b.id===bId?{...b,items:updated,updated_at:new Date().toISOString()}:b)),
-      ()=>dbPatch(bId,{items:updated})
+      ()=>setBuckets(updatedBuckets),
+      async()=>{await dbPatch(bId,{items:updated}); await syncMatrix(updatedBuckets);}
     );
     toast$("Item updated");
   };
@@ -265,7 +328,9 @@ function App() {
     try {
       await dbDeleteAll();
       const data=await dbInsert(DEFAULTS);
-      setBuckets(data); toast$("Reset to defaults");
+      setBuckets(data);
+      await syncMatrix(data);
+      toast$("Reset to defaults");
     } catch(e){ toast$("Reset failed: "+e.message,true); }
     setLoading(false);
   };
@@ -318,6 +383,26 @@ function App() {
     const csv=rows.map(r=>r.map(c=>`"${c.replace(/"/g,'""')}"`).join(",")).join("\n");
     const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="incident_buckets.csv"; a.click();
     toast$("CSV downloaded");
+  };
+
+  const exportMatrixCSV = () => {
+    const rows=[["Bucket","Incident","Severity","Response Lead","Immediate Actions","Communication Protocol","Escalation Path","RTO"]];
+    buckets.forEach(b=>{
+      const bRows=matrixData.filter(r=>r.bucket_id===b.id);
+      bRows.forEach(r=>rows.push([b.name,r.incident_name,r.severity,r.response_lead,r.immediate_actions,r.communication,r.escalation_path,r.rto]));
+    });
+    const csv=rows.map(r=>r.map(c=>`"${(c||"").replace(/"/g,'""')}"`).join(",")).join("\n");
+    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="incident_matrix.csv"; a.click();
+    toast$("Matrix CSV downloaded");
+  };
+
+  const saveMatrixCell = async (id, field, value) => {
+    setMatrixData(md=>md.map(r=>r.id===id?{...r,[field]:value,updated_at:new Date().toISOString()}:r));
+    setMatrixEdit(null);
+    setSaving(true);
+    try { await mxPatch(id,{[field]:value}); }
+    catch(e) { toast$("Save failed: "+e.message, true); await syncMatrix(); }
+    setSaving(false);
   };
 
   const scrollTo=id=>{refs.current[id]?.scrollIntoView({behavior:"smooth",block:"start"});setCollapsed(c=>({...c,[id]:false}));};
@@ -522,7 +607,7 @@ function App() {
           </div>
           {/* Tabs */}
           <div style={{display:"flex",gap:0,borderBottom:"2px solid #E2E8F0"}}>
-            {[["buckets","📋 Buckets"],["signedoff","✅ Signed Off"]].map(([id,label])=>(
+            {[["buckets","📋 Buckets"],["matrix","📊 Incident Matrix"],["signedoff","✅ Signed Off"]].map(([id,label])=>(
               <button key={id} onClick={()=>setActiveTab(id)} style={{padding:"8px 18px",fontSize:13,fontWeight:700,border:"none",borderBottom:activeTab===id?"3px solid #0F172A":"3px solid transparent",marginBottom:-2,background:"none",cursor:"pointer",color:activeTab===id?"#0F172A":"#94A3B8"}}>
                 {label}
               </button>
@@ -617,6 +702,118 @@ function App() {
             </div>
           );
         })}
+      </div>}
+
+      {/* ── INCIDENT MATRIX TAB ── */}
+      {activeTab==="matrix"&&<div style={{maxWidth:1200,margin:"0 auto",padding:"24px 16px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
+          <div>
+            <h2 style={{fontSize:18,fontWeight:800,color:"#0F172A"}}>Incident Matrix</h2>
+            <p style={{fontSize:13,color:"#64748B",marginTop:2}}>Response plan for every incident across all buckets</p>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={exportMatrixCSV} style={{background:"#fff",border:"1.5px solid #E2E8F0",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#475569"}}>Export CSV</button>
+            <button onClick={()=>window.print()} style={{background:"#fff",border:"1.5px solid #E2E8F0",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#475569"}}>Print</button>
+          </div>
+        </div>
+
+        {matrixData.length===0?(
+          <div style={{textAlign:"center",padding:"60px 0",color:"#94A3B8"}}>
+            <p style={{fontSize:32,marginBottom:12}}>📊</p>
+            <p style={{fontSize:15,fontWeight:500}}>No matrix data yet.</p>
+            <p style={{fontSize:13,marginTop:6}}>Matrix auto-populates from your buckets.</p>
+          </div>
+        ):(
+          <div style={{overflowX:"auto",borderRadius:12,border:"1.5px solid #E2E8F0",background:"#fff"}}>
+            <table style={{width:"100%",minWidth:1000,borderCollapse:"collapse",fontSize:13}}>
+              <thead>
+                <tr style={{background:"#F8FAFC"}}>
+                  <th style={{position:"sticky",left:0,zIndex:3,background:"#F8FAFC",padding:"10px 14px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:180}}>Incident</th>
+                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:90}}>Severity</th>
+                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:130}}>Response Lead</th>
+                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:200}}>Immediate Actions</th>
+                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:170}}>Communication</th>
+                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:150}}>Escalation Path</th>
+                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:100}}>RTO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(()=>{
+                  const filteredMx = buckets.filter(b=>{
+                    if(ownerFilter!=="all"&&b.owner!==ownerFilter) return false;
+                    if(!search) return true;
+                    const q=search.toLowerCase();
+                    return b.name.toLowerCase().includes(q)||b.items.some(i=>i.toLowerCase().includes(q));
+                  });
+                  return filteredMx.map(bucket=>{
+                    const c=getTheme(bucket.theme);
+                    let bRows=matrixData.filter(r=>r.bucket_id===bucket.id);
+                    if(search){const q=search.toLowerCase(); bRows=bRows.filter(r=>r.incident_name.toLowerCase().includes(q));}
+                    if(bRows.length===0) return null;
+                    const sevColor={Critical:"#DC2626",High:"#EA580C",Medium:"#D97706",Low:"#16A34A"};
+
+                    return(
+                      <React.Fragment key={bucket.id}>
+                        <tr>
+                          <td colSpan={7} style={{background:c.bg,color:c.header,fontWeight:700,padding:"10px 14px",borderBottom:`2px solid ${c.border}`,fontSize:13}}>
+                            <span style={{background:c.badge,color:c.txt,borderRadius:20,padding:"2px 9px",fontSize:11,fontWeight:700,marginRight:8}}>{bucket.bucket_order}</span>
+                            {bucket.name} <span style={{fontWeight:400,fontSize:12,color:c.header,opacity:0.7}}>({bRows.length} incidents)</span>
+                          </td>
+                        </tr>
+                        {bRows.map(row=>{
+                          const isEditing = (field) => matrixEdit && matrixEdit.id===row.id && matrixEdit.field===field;
+                          const cellStyle = (field) => ({
+                            padding:"8px 12px",borderBottom:"1px solid #F1F5F9",
+                            cursor:isAdmin?"pointer":"default",
+                            background:isEditing(field)?"#FFFBEB":"transparent",
+                            verticalAlign:"top",lineHeight:"1.4",maxWidth:220,
+                          });
+                          const renderCell = (field, value) => {
+                            if(isEditing(field)){
+                              if(field==="severity") return(
+                                <select autoFocus value={matrixEdit.value} onChange={e=>setMatrixEdit(m=>({...m,value:e.target.value}))} onBlur={()=>saveMatrixCell(row.id,field,matrixEdit.value)} style={{width:"100%",padding:"4px 6px",borderRadius:6,border:"1.5px solid #E2E8F0",fontSize:13}}>
+                                  {SEVERITY_OPTIONS.map(s=><option key={s} value={s}>{s}</option>)}
+                                </select>
+                              );
+                              if(field==="rto") return(
+                                <select autoFocus value={matrixEdit.value} onChange={e=>setMatrixEdit(m=>({...m,value:e.target.value}))} onBlur={()=>saveMatrixCell(row.id,field,matrixEdit.value)} style={{width:"100%",padding:"4px 6px",borderRadius:6,border:"1.5px solid #E2E8F0",fontSize:13}}>
+                                  {RTO_OPTIONS.map(r=><option key={r} value={r}>{r}</option>)}
+                                </select>
+                              );
+                              return(
+                                <textarea autoFocus value={matrixEdit.value} onChange={e=>setMatrixEdit(m=>({...m,value:e.target.value}))} onKeyDown={e=>{if(e.key==="Escape"){setMatrixEdit(null);}if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();saveMatrixCell(row.id,field,matrixEdit.value);}}} onBlur={()=>saveMatrixCell(row.id,field,matrixEdit.value)} rows={2} style={{width:"100%",padding:"4px 6px",borderRadius:6,border:"1.5px solid #E2E8F0",fontSize:13,resize:"vertical",fontFamily:"inherit"}}/>
+                              );
+                            }
+                            if(field==="severity"){
+                              const sc=sevColor[value]||"#64748B";
+                              return <span style={{background:sc+"18",color:sc,padding:"2px 8px",borderRadius:12,fontSize:12,fontWeight:600}}>{value||"—"}</span>;
+                            }
+                            if(field==="rto") return <span style={{fontSize:12,fontWeight:500,color:"#475569"}}>{value||"—"}</span>;
+                            return <span style={{fontSize:12.5,color:value?"#334155":"#CBD5E1",whiteSpace:"pre-wrap"}}>{value||"—"}</span>;
+                          };
+                          const startEdit = (field, value) => { if(isAdmin) setMatrixEdit({id:row.id, field, value: value||""}); };
+
+                          return(
+                            <tr key={row.id} style={{borderLeft:`4px solid ${c.badge}`}}>
+                              <td style={{position:"sticky",left:0,zIndex:2,background:"#fff",padding:"8px 14px",borderBottom:"1px solid #F1F5F9",fontWeight:600,color:"#0F172A",verticalAlign:"top",fontSize:12.5}}>{row.incident_name}</td>
+                              <td style={cellStyle("severity")} onClick={()=>startEdit("severity",row.severity)}>{renderCell("severity",row.severity)}</td>
+                              <td style={cellStyle("response_lead")} onClick={()=>startEdit("response_lead",row.response_lead)}>{renderCell("response_lead",row.response_lead)}</td>
+                              <td style={cellStyle("immediate_actions")} onClick={()=>startEdit("immediate_actions",row.immediate_actions)}>{renderCell("immediate_actions",row.immediate_actions)}</td>
+                              <td style={cellStyle("communication")} onClick={()=>startEdit("communication",row.communication)}>{renderCell("communication",row.communication)}</td>
+                              <td style={cellStyle("escalation_path")} onClick={()=>startEdit("escalation_path",row.escalation_path)}>{renderCell("escalation_path",row.escalation_path)}</td>
+                              <td style={cellStyle("rto")} onClick={()=>startEdit("rto",row.rto)}>{renderCell("rto",row.rto)}</td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {isAdmin&&matrixData.length>0&&<p style={{fontSize:11.5,color:"#94A3B8",marginTop:12,textAlign:"center"}}>Click any cell to edit (admin only) &middot; Changes save automatically</p>}
       </div>}
 
       {/* ── SIGNED OFF TAB ── */}
