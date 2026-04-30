@@ -191,6 +191,8 @@ function App() {
   const [matrixEdit,     setMatrixEdit]     = useState(null);
   const [matrixOpenEdit, setMatrixOpenEdit] = useState(()=>localStorage.getItem("matrixOpenEdit")==="true");
   const [matrixHelp,     setMatrixHelp]     = useState(false);
+  const [bucketLeadEdit, setBucketLeadEdit] = useState(null);
+  const [bucketLeadValue,setBucketLeadValue]= useState("");
   const refs = useRef({});
 
   const toast$ = (msg, err=false) => { setToast({msg,err}); setTimeout(()=>setToast(null),3000); };
@@ -399,10 +401,10 @@ function App() {
   };
 
   const exportMatrixCSV = () => {
-    const rows=[["Bucket","Incident","Severity","Response Lead","Immediate Actions","Communication Protocol","Escalation Path","RTO"]];
+    const rows=[["Bucket","Response Lead","Incident","Severity","Other Partners","Immediate Actions","Communication Protocol","Escalation Path","RTO"]];
     buckets.forEach(b=>{
       const bRows=matrixData.filter(r=>r.bucket_id===b.id);
-      bRows.forEach(r=>rows.push([b.name,r.incident_name,r.severity,r.response_lead,r.immediate_actions,r.communication,r.escalation_path,r.rto]));
+      bRows.forEach(r=>rows.push([b.name,b.response_lead||"",r.incident_name,r.severity,r.response_lead,r.immediate_actions,r.communication,r.escalation_path,r.rto]));
     });
     const csv=rows.map(r=>r.map(c=>`"${(c||"").replace(/"/g,'""')}"`).join(",")).join("\n");
     const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="incident_matrix.csv"; a.click();
@@ -416,6 +418,14 @@ function App() {
     try { await mxPatch(id,{[field]:value}); }
     catch(e) { toast$("Save failed: "+e.message, true); await syncMatrix(); }
     setSaving(false);
+  };
+
+  const saveBucketLead = async (bucketId) => {
+    const val = bucketLeadValue.trim();
+    setBuckets(bs=>bs.map(b=>b.id===bucketId?{...b,response_lead:val,updated_at:new Date().toISOString()}:b));
+    setBucketLeadEdit(null);
+    try { await dbPatch(bucketId,{response_lead:val}); }
+    catch(e) { toast$("Save failed: "+e.message, true); }
   };
 
   const scrollTo=id=>{refs.current[id]?.scrollIntoView({behavior:"smooth",block:"start"});setCollapsed(c=>({...c,[id]:false}));};
@@ -743,7 +753,8 @@ function App() {
               {[
                 {icon:"📋",title:"Incident",desc:"The name of the incident as defined in the corresponding bucket. This column is read-only and automatically syncs when incidents are added, edited, or removed from the Buckets tab."},
                 {icon:"🔴",title:"Severity",color:"#DC2626",desc:"Classifies how critical the incident is to operations, safety, or reputation. Use this to prioritize response efforts and resource allocation.",options:["Critical — Immediate threat to life, safety, or core operations. Requires all-hands response.","High — Significant disruption or risk. Requires rapid coordinated response within hours.","Medium — Moderate impact with manageable disruption. Requires planned response within 1-3 days.","Low — Minor impact. Can be addressed through standard procedures."]},
-                {icon:"👤",title:"Response Team Lead",desc:"The specific role or individual responsible for coordinating the response to this incident. This is distinct from the bucket-level owner — it identifies who personally leads the response, makes decisions, and reports progress during the incident."},
+                {icon:"👤",title:"Response Lead (per bucket)",desc:"Set in the colored bucket header row. The single person or role accountable for the entire bucket's response — only one per bucket. Admin-editable; click the value next to 👤 Response Lead in any bucket header to set or change it."},
+                {icon:"🤝",title:"Other Partners",desc:"Additional teams, roles, or individuals who collaborate with the Response Lead on this specific incident. Use this column to list cross-functional partners (e.g., Legal, HR, IT Security, External Counsel) who support — but do not own — the response."},
                 {icon:"⚡",title:"Immediate Actions",desc:"The first steps to take within the first 30 minutes of the incident being identified. These should be numbered, specific, and actionable — think of them as a quick-reference checklist that anyone can follow under pressure. Include calls to make, systems to activate, and people to notify."},
                 {icon:"📢",title:"Communication Protocol",desc:"Defines who gets notified, through what channel, and in what timeframe. Should cover internal communication (staff, leadership) and external communication (clients, media, authorities) as applicable. Include specific channels (phone, email, mass text, Slack) and timing expectations."},
                 {icon:"⬆️",title:"Escalation Path",desc:"The chain of command if the situation worsens, the primary lead is unavailable, or the incident exceeds the initial response capacity. Format as a clear sequence (e.g., Manager → Director → VP → CEO → External Counsel) so anyone can identify the next person to contact."},
@@ -780,7 +791,7 @@ function App() {
                 <tr style={{background:"#F8FAFC"}}>
                   <th style={{position:"sticky",left:0,zIndex:3,background:"#F8FAFC",padding:"10px 14px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:180}}>Incident</th>
                   <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:90}}>Severity</th>
-                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:130}}>Response Lead</th>
+                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:130}}>Other Partners</th>
                   <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:200}}>Immediate Actions</th>
                   <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:170}}>Communication</th>
                   <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:150}}>Escalation Path</th>
@@ -806,8 +817,35 @@ function App() {
                       <React.Fragment key={bucket.id}>
                         <tr>
                           <td colSpan={7} style={{background:c.bg,color:c.header,fontWeight:700,padding:"10px 14px",borderBottom:`2px solid ${c.border}`,fontSize:13}}>
-                            <span style={{background:c.badge,color:c.txt,borderRadius:20,padding:"2px 9px",fontSize:11,fontWeight:700,marginRight:8}}>{bucket.bucket_order}</span>
-                            {bucket.name} <span style={{fontWeight:400,fontSize:12,color:c.header,opacity:0.7}}>({bRows.length} incidents)</span>
+                            <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                                <span style={{background:c.badge,color:c.txt,borderRadius:20,padding:"2px 9px",fontSize:11,fontWeight:700}}>{bucket.bucket_order}</span>
+                                <span>{bucket.name}</span>
+                                <span style={{fontWeight:400,fontSize:12,color:c.header,opacity:0.7}}>({bRows.length} incidents)</span>
+                              </div>
+                              <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,0.55)",padding:"3px 10px",borderRadius:20,border:`1px solid ${c.border}`}}>
+                                <span style={{fontSize:11,fontWeight:700,color:c.header,letterSpacing:0.3,textTransform:"uppercase"}}>👤 Response Lead:</span>
+                                {bucketLeadEdit===bucket.id?(
+                                  <input
+                                    autoFocus
+                                    value={bucketLeadValue}
+                                    onChange={e=>setBucketLeadValue(e.target.value)}
+                                    onBlur={()=>saveBucketLead(bucket.id)}
+                                    onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();saveBucketLead(bucket.id);}if(e.key==="Escape"){setBucketLeadEdit(null);}}}
+                                    placeholder="Name or role"
+                                    style={{padding:"2px 8px",borderRadius:6,border:"1.5px solid "+c.border,fontSize:12,minWidth:160,outline:"none"}}
+                                  />
+                                ):(
+                                  <span
+                                    onClick={()=>{if(isAdmin){setBucketLeadEdit(bucket.id);setBucketLeadValue(bucket.response_lead||"");}}}
+                                    style={{fontSize:12,fontWeight:600,color:bucket.response_lead?c.header:"#94A3B8",cursor:isAdmin?"pointer":"default",textDecoration:isAdmin&&!bucket.response_lead?"underline dotted":"none"}}
+                                    title={isAdmin?"Click to edit":""}
+                                  >
+                                    {bucket.response_lead||(isAdmin?"Click to set":"—")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </td>
                         </tr>
                         {bRows.map(row=>{
