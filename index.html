@@ -735,7 +735,6 @@ function App() {
             <p style={{fontSize:13,color:"#64748B",marginTop:2}}>Response plan for every incident across all buckets</p>
           </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-            {isAdmin&&<button onClick={()=>{const v=!matrixOpenEdit;setMatrixOpenEdit(v);localStorage.setItem("matrixOpenEdit",v);toast$(v?"All users can now edit the matrix":"Only admins can edit the matrix");}} style={{background:matrixOpenEdit?"#16A34A":"#fff",border:matrixOpenEdit?"1.5px solid #16A34A":"1.5px solid #E2E8F0",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:matrixOpenEdit?"#fff":"#475569"}}>{matrixOpenEdit?"Editing: Everyone":"Editing: Admin Only"}</button>}
             <button onClick={()=>setMatrixHelp(true)} style={{background:"#EFF6FF",border:"1.5px solid #BFDBFE",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#2563EB"}}>? Column Guide</button>
             <button onClick={exportMatrixCSV} style={{background:"#fff",border:"1.5px solid #E2E8F0",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#475569"}}>Export CSV</button>
             <button onClick={()=>window.print()} style={{background:"#fff",border:"1.5px solid #E2E8F0",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#475569"}}>Print</button>
@@ -837,11 +836,11 @@ function App() {
                                   />
                                 ):(
                                   <span
-                                    onClick={()=>{if(isAdmin){setBucketLeadEdit(bucket.id);setBucketLeadValue(bucket.response_lead||"");}}}
-                                    style={{fontSize:12,fontWeight:600,color:bucket.response_lead?c.header:"#94A3B8",cursor:isAdmin?"pointer":"default",textDecoration:isAdmin&&!bucket.response_lead?"underline dotted":"none"}}
-                                    title={isAdmin?"Click to edit":""}
+                                    onClick={()=>{setBucketLeadEdit(bucket.id);setBucketLeadValue(bucket.response_lead||"");}}
+                                    style={{fontSize:12,fontWeight:600,color:bucket.response_lead?c.header:"#94A3B8",cursor:"pointer",textDecoration:!bucket.response_lead?"underline dotted":"none"}}
+                                    title="Click to edit"
                                   >
-                                    {bucket.response_lead||(isAdmin?"Click to set":"—")}
+                                    {bucket.response_lead||"Click to set"}
                                   </span>
                                 )}
                               </div>
@@ -852,7 +851,7 @@ function App() {
                           const isEditing = (field) => matrixEdit && matrixEdit.id===row.id && matrixEdit.field===field;
                           const cellStyle = (field) => ({
                             padding:"8px 12px",borderBottom:"1px solid #F1F5F9",
-                            cursor:(isAdmin||matrixOpenEdit)?"pointer":"default",
+                            cursor:"pointer",
                             background:isEditing(field)?"#FFFBEB":"transparent",
                             verticalAlign:"top",lineHeight:"1.4",maxWidth:220,
                           });
@@ -879,7 +878,7 @@ function App() {
                             if(field==="rto") return <span style={{fontSize:12,fontWeight:500,color:"#475569"}}>{value||"—"}</span>;
                             return <span style={{fontSize:12.5,color:value?"#334155":"#CBD5E1",whiteSpace:"pre-wrap"}}>{value||"—"}</span>;
                           };
-                          const startEdit = (field, value) => { if(isAdmin||matrixOpenEdit) setMatrixEdit({id:row.id, field, value: value||""}); };
+                          const startEdit = (field, value) => { setMatrixEdit({id:row.id, field, value: value||""}); };
 
                           return(
                             <tr key={row.id} style={{borderLeft:`4px solid ${c.badge}`}}>
@@ -901,7 +900,7 @@ function App() {
             </table>
           </div>
         )}
-        {matrixData.length>0&&<p style={{fontSize:11.5,color:"#94A3B8",marginTop:12,textAlign:"center"}}>{(isAdmin||matrixOpenEdit)?"Click any cell to edit \u00b7 Changes save automatically":"View only \u00b7 Ask an admin to enable editing"}</p>}
+        {matrixData.length>0&&<p style={{fontSize:11.5,color:"#94A3B8",marginTop:12,textAlign:"center"}}>Click any cell to edit \u00b7 Changes save automatically</p>}
       </div>}
 
       {/* ── SIGNED OFF TAB ── */}
