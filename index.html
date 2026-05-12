@@ -784,17 +784,17 @@ function App() {
             <p style={{fontSize:13,marginTop:6}}>Matrix auto-populates from your buckets.</p>
           </div>
         ):(
-          <div style={{overflowX:"auto",borderRadius:12,border:"1.5px solid #E2E8F0",background:"#fff"}}>
+          <div style={{overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 260px)",borderRadius:12,border:"1.5px solid #E2E8F0",background:"#fff"}}>
             <table style={{width:"100%",minWidth:1000,borderCollapse:"collapse",fontSize:13}}>
               <thead>
                 <tr style={{background:"#F8FAFC"}}>
-                  <th style={{position:"sticky",left:0,zIndex:3,background:"#F8FAFC",padding:"10px 14px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:180}}>Incident</th>
-                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:90}}>Severity</th>
-                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:130}}>Other Partners</th>
-                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:200}}>Immediate Actions</th>
-                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:170}}>Communication</th>
-                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:150}}>Escalation Path</th>
-                  <th style={{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:100}}>RTO</th>
+                  <th style={{position:"sticky",left:0,top:0,zIndex:5,background:"#F8FAFC",padding:"10px 14px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:180}}>Incident</th>
+                  <th style={{position:"sticky",top:0,zIndex:4,background:"#F8FAFC",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:90}}>Severity</th>
+                  <th style={{position:"sticky",top:0,zIndex:4,background:"#F8FAFC",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:130}}>Other Partners</th>
+                  <th style={{position:"sticky",top:0,zIndex:4,background:"#F8FAFC",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:200}}>Immediate Actions</th>
+                  <th style={{position:"sticky",top:0,zIndex:4,background:"#F8FAFC",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:170}}>Communication</th>
+                  <th style={{position:"sticky",top:0,zIndex:4,background:"#F8FAFC",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:150}}>Escalation Path</th>
+                  <th style={{position:"sticky",top:0,zIndex:4,background:"#F8FAFC",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0F172A",borderBottom:"2px solid #E2E8F0",minWidth:100}}>RTO</th>
                 </tr>
               </thead>
               <tbody>
