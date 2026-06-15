@@ -104,6 +104,44 @@ const SURVEY_DATA = {
   knowTools: {"Yes, I know exactly where to go":557,"I think so, but it is not always clear":322,"No, I usually rely on others to share it":113,"Not applicable to my role":86,"No, I am often unsure what tools are approved":82},
   channels: {"Email":857,"Chat / Microsoft Teams":568,"Direct Leader / Manager Communication":507,"All of the above":207,"SMS/Text Message":113,"Company SharePoint Site":93},
   eventTypes: {"Immigration or regulatory policy changes that may impact clients or Firm processes":995,"Social media or public situations involving the Firm":814,"Security or safety-related incidents involving the Firm internally":727,"Security or safety-related incidents occurring externally that could impact employees or operations":671,"Office closures or operational disruptions":663,"Severe weather or natural disasters that may impact employees or operations":462,"International or geopolitical events that may impact employee safety or travel":414,"Security or safety-related incidents occurring within or near an office location":403,"Other (write-in)":19},
+  openText: {
+    recent: {
+      question: "Is there a recent situation where you wish the firm had communicated sooner or more clearly?",
+      noConcern: 545, substantive: 615,
+      samples: [
+        "The situation with the lawsuit was handled correctly although no updates regarding the court news related to VAWA, T-VISA and U-VISA applicants not being deported has been given.",
+        "About the TikTok videos, when Trump was president again, when other attorney quit her license. We have been mostly informed by other team mates or even realized on social media.",
+        "About the lawsuit we received, it was communicated until the firmwide — should have been earlier and through email so during the firmwide we could have discussed doubts and updates.",
+        "I really want to know if the Firm will continue with the EOR process. Since December, we haven't received any updates, and it would be really nice to know what has happened with this.",
+        "Earlier this year, communication could have been a bit clearer when videos started circulating on social media, particularly regarding how to proceed within the firm.",
+        "It would have been nice if we could have received more details about the lawsuit — what is being alleged versus what we know to be true about our own practices.",
+      ],
+    },
+    improve: {
+      question: "What would have made those communications more helpful, clear, or actionable?",
+      noConcern: 386, substantive: 774,
+      samples: [
+        "The communication would have been much more actionable if it had explicitly addressed how this new software requirement aligns with our existing EOR/Contractor employment agreements.",
+        "The best way is to share updates or communications with the client-facing teams first, so we'll be prepared for any client questions and able to support the clients.",
+        "I think we felt that there were no clear criteria for layoffs, only the situation warranted it, and there was no prior notification — it only caused anxiety throughout the team.",
+        "It seemed like the communications were more geared towards reassuring employees that everything was fine, instead of explaining what there was to be concerned about in the first place.",
+        "Maybe knowing that IT was on it — we all thought it was our personal Litify that was failing. It was at the end of the day that we knew Litify had crashed as a whole.",
+        "I think it would have been helpful to communicate earlier that this decision was being considered. That would have given people more time to prepare and understand the potential impacts.",
+      ],
+    },
+    anything: {
+      question: "Is there anything else you would like to share about how the Firm can improve communication or response during urgent situations, operational disruptions, incidents, or high-impact events?",
+      noConcern: 666, substantive: 494,
+      samples: [
+        "The company should provide updates via team video call — most of the time they send them by email, but there's no time to read the email, so the information goes unreviewed.",
+        "Simply being open with what is happening as soon as it begins, even if there's not a lot of available information. Then, once a course of action is outlined, share that as well.",
+        "Cross-team communication about how events may impact their team and offices being closed or open. I have no idea when a new office opens until I get mail from them or something.",
+        "We need a platform where we can check latest social media rumors about the firm and have scripts to answer all inquiries about those rumors so clients can stay at peace.",
+        "Providing a brief post-incident summary outlining the issue, resolution, and any preventive measures would improve transparency and help teams learn from high-impact events.",
+        "When the firm communicates, we need to understand the why, what, and when — a change is going to happen, or if an urgent matter needs to be addressed quickly.",
+      ],
+    },
+  },
 };
 
 const sentimentColor = (label) => {
@@ -151,6 +189,35 @@ const SurveyCard = ({title, subtitle, children}) => (
     {children}
   </div>
 );
+
+const SurveyTextCard = ({question, noConcern, substantive, samples, total}) => {
+  const subPct = ((substantive/total)*100).toFixed(1);
+  const noPct = ((noConcern/total)*100).toFixed(1);
+  return (
+    <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #E2E8F0",padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
+      <h3 style={{fontSize:14,fontWeight:700,color:"#0F172A",margin:0,lineHeight:1.4}}>{question}</h3>
+      <p style={{fontSize:11.5,color:"#94A3B8",margin:"3px 0 12px"}}>Open-text · {total.toLocaleString()} responses</p>
+
+      <div style={{display:"flex",gap:8,marginBottom:14}}>
+        <div style={{flex:substantive,background:"#0D9488",color:"#fff",padding:"6px 10px",borderRadius:6,fontSize:11.5,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden"}}>
+          {substantive.toLocaleString()} substantive · {subPct}%
+        </div>
+        <div style={{flex:noConcern,background:"#E2E8F0",color:"#475569",padding:"6px 10px",borderRadius:6,fontSize:11.5,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden"}}>
+          {noConcern.toLocaleString()} "no concern" · {noPct}%
+        </div>
+      </div>
+
+      <p style={{fontSize:11,color:"#94A3B8",fontWeight:600,textTransform:"uppercase",letterSpacing:0.5,marginBottom:8}}>Sample responses</p>
+      <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:280,overflowY:"auto",paddingRight:4}}>
+        {samples.map((s,i)=>(
+          <div key={i} style={{background:"#F8FAFC",borderLeft:"3px solid #0D9488",padding:"8px 12px",borderRadius:"0 6px 6px 0",fontSize:12.5,color:"#334155",lineHeight:1.5,fontStyle:"italic"}}>
+            "{s}"
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const SurveyKpi = ({label, value, sublabel, color}) => (
   <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #E2E8F0",padding:"16px 18px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
@@ -221,8 +288,19 @@ const SurveyResults = () => {
         </SurveyCard>
       </div>
 
+      {/* OPEN-TEXT FEEDBACK */}
+      <div style={{marginTop:30,marginBottom:14}}>
+        <h3 style={{fontSize:16,fontWeight:800,color:"#0F172A"}}>Open-Text Feedback</h3>
+        <p style={{fontSize:12.5,color:"#64748B",marginTop:3}}>Three free-response questions · sentiment + representative quotes</p>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,460px),1fr))",gap:16}}>
+        <SurveyTextCard question={S.openText.recent.question} noConcern={S.openText.recent.noConcern} substantive={S.openText.recent.substantive} samples={S.openText.recent.samples} total={T}/>
+        <SurveyTextCard question={S.openText.improve.question} noConcern={S.openText.improve.noConcern} substantive={S.openText.improve.substantive} samples={S.openText.improve.samples} total={T}/>
+        <SurveyTextCard question={S.openText.anything.question} noConcern={S.openText.anything.noConcern} substantive={S.openText.anything.substantive} samples={S.openText.anything.samples} total={T}/>
+      </div>
+
       <p style={{textAlign:"center",fontSize:11.5,color:"#94A3B8",marginTop:22}}>
-        Source: Incident Response Survey · {T.toLocaleString()} individual responses
+        Source: Incident Response Survey · {T.toLocaleString()} individual responses · 10 quantitative + 3 open-text questions
       </p>
     </div>
   );
