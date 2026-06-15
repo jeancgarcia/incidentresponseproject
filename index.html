@@ -91,6 +91,143 @@ const mxDelete = id         => sb("DELETE", `${MX_TABLE}?id=eq.${id}`);
 const SEVERITY_OPTIONS = ["Critical","High","Medium","Low"];
 const RTO_OPTIONS = ["< 1 hour","1-4 hours","4-24 hours","1-3 days","3-7 days","7+ days"];
 
+// ── SURVEY DATA (Incident Response Survey · 1,160 responses) ───────────────────
+const SURVEY_DATA = {
+  totalResponses: 1160,
+  department: {"Phase I Operations":235,"Client Support":227,"Business Development":181,"Legal":96,"RFE":92,"Central Operations":43,"Marketing":35,"Information Technology":32,"Court Program":32,"Human Resources":31,"Appeals":31,"Project Management":22,"Supplement":20,"T-AOS":15,"Accounting":13,"USCIS Interview":13,"Renewals":11,"Business Intelligence - Shared":8,"Executive":8,"Corporate Real Estate":8,"Staff Augmentation":5,"Product Management":2},
+  overallHandling: {"Very well":393,"Adequately":311,"Well":287,"Poorly":78,"Not sure / no opinion":65,"Very poorly":26},
+  clarityTimeliness: {"Very clear and timely":546,"Somewhat clear, but slow":274,"Timely, but not always clear":168,"Not sure / no opinion":114,"Neither clear nor timely":58},
+  valueUrgent: {"Faster updates, even if details are still evolving":802,"Fewer updates, but only when information is finalized":358},
+  clientFacing: {"No":617,"Yes":543},
+  knowScripts: {"Yes - I know exactly where to go":479,"I think so, but it’s not always clear":386,"No - I usually rely on others to share it":143,"No - I’m often unsure where the latest version lives":93,"Not applicable to my role":59},
+  knowOutage: {"Yes - I know exactly where to go":420,"I think so, but it’s not always clear":374,"No - I usually rely on others to share it":265,"No - I’m often unsure where the latest version lives":101},
+  knowTools: {"Yes, I know exactly where to go":557,"I think so, but it is not always clear":322,"No, I usually rely on others to share it":113,"Not applicable to my role":86,"No, I am often unsure what tools are approved":82},
+  channels: {"Email":857,"Chat / Microsoft Teams":568,"Direct Leader / Manager Communication":507,"All of the above":207,"SMS/Text Message":113,"Company SharePoint Site":93},
+  eventTypes: {"Immigration or regulatory policy changes that may impact clients or Firm processes":995,"Social media or public situations involving the Firm":814,"Security or safety-related incidents involving the Firm internally":727,"Security or safety-related incidents occurring externally that could impact employees or operations":671,"Office closures or operational disruptions":663,"Severe weather or natural disasters that may impact employees or operations":462,"International or geopolitical events that may impact employee safety or travel":414,"Security or safety-related incidents occurring within or near an office location":403,"Other (write-in)":19},
+};
+
+const sentimentColor = (label) => {
+  const l = String(label).toLowerCase();
+  if (l.includes("very well") || l.includes("very clear") || (l.includes("yes") && l.includes("exactly")) || l === "yes") return "#16A34A";
+  if (l.includes("adequately") || l === "well" || l.includes("faster updates") || l.includes("timely, but")) return "#0D9488";
+  if (l.includes("somewhat") || l.includes("think so") || l.includes("fewer updates")) return "#EAB308";
+  if (l.includes("very poorly")) return "#991B1B";
+  if (l.includes("poorly") || l.includes("neither") || l.includes("rely on others") || l.includes("often unsure") || l === "no") return "#DC2626";
+  if (l.includes("not sure") || l.includes("not applicable") || l.includes("other")) return "#94A3B8";
+  if (l.includes("all of the above")) return "#7C3AED";
+  return "#2563EB";
+};
+
+const SurveyBar = ({data, total, sortDesc=true}) => {
+  let entries = Object.entries(data);
+  if (sortDesc) entries.sort((a,b)=>b[1]-a[1]);
+  const localMax = Math.max(...entries.map(([,v])=>v));
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:11}}>
+      {entries.map(([label,value])=>{
+        const widthPct = (value/localMax*100);
+        const pct = ((value/total)*100).toFixed(1);
+        const color = sentimentColor(label);
+        return (
+          <div key={label}>
+            <div style={{display:"flex",justifyContent:"space-between",gap:8,marginBottom:5,fontSize:12.5,alignItems:"baseline"}}>
+              <span style={{color:"#334155",lineHeight:1.35,flex:1}}>{label}</span>
+              <span style={{color:"#64748B",fontWeight:600,whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"}}>{value.toLocaleString()} · {pct}%</span>
+            </div>
+            <div style={{height:9,background:"#F1F5F9",borderRadius:5,overflow:"hidden"}}>
+              <div style={{width:`${widthPct}%`,height:"100%",background:color,borderRadius:5,transition:"width 0.6s ease"}}/>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const SurveyCard = ({title, subtitle, children}) => (
+  <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #E2E8F0",padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
+    <h3 style={{fontSize:14,fontWeight:700,color:"#0F172A",margin:0}}>{title}</h3>
+    {subtitle ? <p style={{fontSize:11.5,color:"#94A3B8",margin:"3px 0 14px"}}>{subtitle}</p> : <div style={{height:14}}/>}
+    {children}
+  </div>
+);
+
+const SurveyKpi = ({label, value, sublabel, color}) => (
+  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #E2E8F0",padding:"16px 18px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
+    <p style={{fontSize:10.5,color:"#94A3B8",fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,margin:0}}>{label}</p>
+    <p style={{fontSize:28,fontWeight:800,color:color||"#0F172A",marginTop:6,lineHeight:1}}>{value}</p>
+    {sublabel && <p style={{fontSize:11.5,color:"#64748B",marginTop:5,lineHeight:1.4}}>{sublabel}</p>}
+  </div>
+);
+
+const SurveyResults = () => {
+  const S = SURVEY_DATA;
+  const T = S.totalResponses;
+  const pct = (n) => ((n/T)*100).toFixed(1);
+  const sum = (obj, keys) => keys.reduce((a,k)=>a+(obj[k]||0),0);
+
+  const positiveHandling = sum(S.overallHandling, ["Very well","Well","Adequately"]);
+  const negativeHandling = sum(S.overallHandling, ["Poorly","Very poorly"]);
+  const fasterUpdates    = S.valueUrgent["Faster updates, even if details are still evolving"] || 0;
+  const knowScriptsYes   = S.knowScripts["Yes - I know exactly where to go"] || 0;
+  const knowOutageNo     = sum(S.knowOutage, ["No - I usually rely on others to share it","No - I’m often unsure where the latest version lives"]);
+
+  return (
+    <div style={{maxWidth:1200,margin:"0 auto",padding:"24px 16px"}}>
+      <div style={{marginBottom:20}}>
+        <h2 style={{fontSize:20,fontWeight:800,color:"#0F172A"}}>Incident Response Survey — Results</h2>
+        <p style={{fontSize:13,color:"#64748B",marginTop:4}}>How LLF employees experience communication during incidents and urgent situations.</p>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:14,marginBottom:22}}>
+        <SurveyKpi label="Total Responses" value={T.toLocaleString()} sublabel="Across 22 departments"/>
+        <SurveyKpi label="Positive on Handling" value={`${pct(positiveHandling)}%`} sublabel={`${positiveHandling.toLocaleString()} rated Very well / Well / Adequately`} color="#16A34A"/>
+        <SurveyKpi label="Negative on Handling" value={`${pct(negativeHandling)}%`} sublabel={`${negativeHandling.toLocaleString()} rated Poorly / Very poorly`} color="#DC2626"/>
+        <SurveyKpi label="Want Faster Updates" value={`${pct(fasterUpdates)}%`} sublabel="Even if details are still evolving" color="#0D9488"/>
+        <SurveyKpi label="Know Where Scripts Live" value={`${pct(knowScriptsYes)}%`} sublabel={`Only ${knowScriptsYes.toLocaleString()} answered "exactly"`} color="#EAB308"/>
+        <SurveyKpi label="Don't Know Outage Status" value={`${pct(knowOutageNo)}%`} sublabel={`${knowOutageNo.toLocaleString()} rely on others or are unsure`} color="#DC2626"/>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,460px),1fr))",gap:16}}>
+        <SurveyCard title="Overall Handling of Past Incidents" subtitle="How well has the Firm handled communication during past incidents?">
+          <SurveyBar data={S.overallHandling} total={T}/>
+        </SurveyCard>
+        <SurveyCard title="Clarity & Timeliness" subtitle="How clear and timely have internal communications been?">
+          <SurveyBar data={S.clarityTimeliness} total={T}/>
+        </SurveyCard>
+        <SurveyCard title="What Employees Value More in Urgent Situations" subtitle="Speed vs. finalized accuracy">
+          <SurveyBar data={S.valueUrgent} total={T}/>
+        </SurveyCard>
+        <SurveyCard title="Client-Facing Roles" subtitle="Share of respondents whose role is client-facing">
+          <SurveyBar data={S.clientFacing} total={T}/>
+        </SurveyCard>
+        <SurveyCard title="Preferred Communication Channels" subtitle="Multi-select · counts can exceed total responses">
+          <SurveyBar data={S.channels} total={T}/>
+        </SurveyCard>
+        <SurveyCard title="Events Employees Want Updates About" subtitle="Multi-select · top categories">
+          <SurveyBar data={S.eventTypes} total={T}/>
+        </SurveyCard>
+        <SurveyCard title="Know Where to Find Current Scripts / Resources">
+          <SurveyBar data={S.knowScripts} total={T}/>
+        </SurveyCard>
+        <SurveyCard title="Know Where to Check System Outage Status">
+          <SurveyBar data={S.knowOutage} total={T}/>
+        </SurveyCard>
+        <SurveyCard title="Know Where to Find Firm-Approved Tools / AI Resources">
+          <SurveyBar data={S.knowTools} total={T}/>
+        </SurveyCard>
+        <SurveyCard title="Respondents by Department" subtitle="Distribution across the Firm">
+          <SurveyBar data={S.department} total={T}/>
+        </SurveyCard>
+      </div>
+
+      <p style={{textAlign:"center",fontSize:11.5,color:"#94A3B8",marginTop:22}}>
+        Source: Incident Response Survey · {T.toLocaleString()} individual responses
+      </p>
+    </div>
+  );
+};
+
 const MATRIX_EXAMPLES = {
   "Law enforcement visits (ICE, Police, FBI)": {severity:"Critical",rto:"< 1 hour",response_lead:"Director of Security",immediate_actions:"1. Do not obstruct officers. 2. Request badge IDs and warrant. 3. Contact Legal immediately. 4. Escort officers to designated area. 5. Document everything.",communication:"Legal team via phone immediately; HR notified within 15 min; Leadership briefed within 30 min; staff memo if needed within 1 hour",escalation_path:"Security Lead → Legal Director → COO → CEO → External Counsel"},
   "Cyber attack": {severity:"Critical",rto:"1-4 hours",response_lead:"IT Security Manager",immediate_actions:"1. Isolate affected systems from network. 2. Activate incident response plan. 3. Preserve forensic evidence. 4. Notify IT leadership. 5. Engage external cybersecurity firm if needed.",communication:"IT team via Slack war room immediately; Leadership via phone within 15 min; affected staff via email within 1 hour; clients if data breach confirmed",escalation_path:"IT Security → CTO → CEO → External Cyber Firm → Legal (if breach)"},
@@ -630,7 +767,7 @@ function App() {
           </div>
           {/* Tabs */}
           <div style={{display:"flex",gap:0,borderBottom:"2px solid #E2E8F0"}}>
-            {[["buckets","📋 Buckets"],["matrix","📊 Incident Matrix"],["signedoff","✅ Signed Off"]].map(([id,label])=>(
+            {[["buckets","📋 Buckets"],["matrix","📊 Incident Matrix"],["survey","📈 Survey Results"],["signedoff","✅ Signed Off"]].map(([id,label])=>(
               <button key={id} onClick={()=>setActiveTab(id)} style={{padding:"8px 18px",fontSize:13,fontWeight:700,border:"none",borderBottom:activeTab===id?"3px solid #0F172A":"3px solid transparent",marginBottom:-2,background:"none",cursor:"pointer",color:activeTab===id?"#0F172A":"#94A3B8"}}>
                 {label}
               </button>
@@ -902,6 +1039,9 @@ function App() {
         )}
         {matrixData.length>0&&<p style={{fontSize:11.5,color:"#94A3B8",marginTop:12,textAlign:"center"}}>Click any cell to edit \u00b7 Changes save automatically</p>}
       </div>}
+
+      {/* ── SURVEY RESULTS TAB ── */}
+      {activeTab==="survey" && <SurveyResults/>}
 
       {/* ── SIGNED OFF TAB ── */}
       {activeTab==="signedoff"&&<div style={{maxWidth:780,margin:"0 auto",padding:"24px 16px"}}>
