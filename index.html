@@ -201,10 +201,10 @@ const SurveyResults = () => {
         <SurveyCard title="Client-Facing Roles" subtitle="Share of respondents whose role is client-facing">
           <SurveyBar data={S.clientFacing} total={T}/>
         </SurveyCard>
-        <SurveyCard title="Preferred Communication Channels" subtitle="Multi-select · counts can exceed total responses">
+        <SurveyCard title="Preferred Communication Channels" subtitle={`Multi-select · % = share of ${T.toLocaleString()} respondents who picked each (totals exceed 100% by design)`}>
           <SurveyBar data={S.channels} total={T}/>
         </SurveyCard>
-        <SurveyCard title="Events Employees Want Updates About" subtitle="Multi-select · top categories">
+        <SurveyCard title="Events Employees Want Updates About" subtitle={`Multi-select · % = share of ${T.toLocaleString()} respondents who picked each (totals exceed 100% by design)`}>
           <SurveyBar data={S.eventTypes} total={T}/>
         </SurveyCard>
         <SurveyCard title="Know Where to Find Current Scripts / Resources">
