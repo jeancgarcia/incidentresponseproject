@@ -104,6 +104,56 @@ const SURVEY_DATA = {
   knowTools: {"Yes, I know exactly where to go":557,"I think so, but it is not always clear":322,"No, I usually rely on others to share it":113,"Not applicable to my role":86,"No, I am often unsure what tools are approved":82},
   channels: {"Email":857,"Chat / Microsoft Teams":568,"Direct Leader / Manager Communication":507,"All of the above":207,"SMS/Text Message":113,"Company SharePoint Site":93},
   eventTypes: {"Immigration or regulatory policy changes that may impact clients or Firm processes":995,"Social media or public situations involving the Firm":814,"Security or safety-related incidents involving the Firm internally":727,"Security or safety-related incidents occurring externally that could impact employees or operations":671,"Office closures or operational disruptions":663,"Severe weather or natural disasters that may impact employees or operations":462,"International or geopolitical events that may impact employee safety or travel":414,"Security or safety-related incidents occurring within or near an office location":403,"Other (write-in)":19},
+  crosstabEventsCols: ["Immigration policy","Social media / public","Security (internal)","Security (external)","Office closures","Severe weather","Geopolitical","Security (near office)"],
+  crosstabChannelsCols: ["Email","Teams chat","Direct manager","All","SMS","SharePoint"],
+  crosstabEvents: {
+    "Phase I Operations":{n:235,v:[89.8,65.5,68.9,67.2,57.4,39.1,38.7,31.9]},
+    "Client Support":{n:227,v:[81.5,76.2,53.3,51.1,56.4,30.8,23.8,30.8]},
+    "Business Development":{n:181,v:[87.8,80.7,63.0,54.7,59.7,47.5,32.6,44.8]},
+    "Legal":{n:96,v:[84.4,51.0,56.2,56.2,50.0,33.3,35.4,31.2]},
+    "RFE":{n:92,v:[93.5,67.4,70.7,63.0,51.1,35.9,37.0,29.3]},
+    "Central Operations":{n:43,v:[81.4,58.1,48.8,55.8,51.2,34.9,25.6,34.9]},
+    "Marketing":{n:35,v:[74.3,88.6,57.1,34.3,60.0,34.3,28.6,37.1]},
+    "Information Technology":{n:32,v:[65.6,65.6,75.0,75.0,53.1,56.2,53.1,46.9]},
+    "Court Program":{n:32,v:[90.6,56.2,56.2,50.0,50.0,34.4,46.9,25.0]},
+    "Human Resources":{n:31,v:[80.6,77.4,61.3,48.4,80.6,54.8,61.3,35.5]},
+    "Appeals":{n:31,v:[93.5,80.6,77.4,74.2,61.3,32.3,41.9,32.3]},
+    "Project Management":{n:22,v:[77.3,63.6,54.5,59.1,45.5,27.3,36.4,31.8]},
+    "Supplement":{n:20,v:[90.0,65.0,70.0,60.0,65.0,45.0,35.0,30.0]},
+    "T-AOS":{n:15,v:[93.3,66.7,46.7,60.0,33.3,33.3,46.7,20.0]},
+    "Accounting":{n:13,v:[84.6,84.6,92.3,61.5,100.0,84.6,46.2,61.5]},
+    "USCIS Interview":{n:13,v:[76.9,46.2,61.5,15.4,69.2,61.5,38.5,7.7]},
+    "Renewals":{n:11,v:[100.0,100.0,81.8,72.7,63.6,63.6,36.4,63.6]},
+    "Business Intelligence - Shared":{n:8,v:[87.5,62.5,75.0,75.0,50.0,62.5,62.5,50.0]},
+    "Executive":{n:8,v:[75.0,75.0,87.5,62.5,50.0,62.5,50.0,50.0]},
+    "Corporate Real Estate":{n:8,v:[87.5,62.5,75.0,75.0,87.5,100.0,100.0,75.0]},
+    "Staff Augmentation":{n:5,v:[100.0,60.0,40.0,40.0,60.0,20.0,40.0,20.0]},
+    "Product Management":{n:2,v:[100.0,100.0,100.0,50.0,100.0,50.0,50.0,50.0]},
+  },
+  crosstabChannels: {
+    "Phase I Operations":{n:235,v:[80.0,49.4,51.5,14.0,4.7,8.5]},
+    "Client Support":{n:227,v:[61.7,51.1,45.8,23.3,4.8,9.7]},
+    "Business Development":{n:181,v:[69.1,58.0,49.7,21.0,13.3,8.3]},
+    "Legal":{n:96,v:[75.0,34.4,31.2,19.8,16.7,7.3]},
+    "RFE":{n:92,v:[80.4,52.2,48.9,12.0,5.4,5.4]},
+    "Central Operations":{n:43,v:[74.4,44.2,32.6,20.9,7.0,7.0]},
+    "Marketing":{n:35,v:[82.9,62.9,40.0,14.3,14.3,8.6]},
+    "Information Technology":{n:32,v:[84.4,46.9,34.4,25.0,21.9,12.5]},
+    "Court Program":{n:32,v:[65.6,59.4,37.5,18.8,6.2,0.0]},
+    "Human Resources":{n:31,v:[74.2,25.8,48.4,9.7,19.4,9.7]},
+    "Appeals":{n:31,v:[67.7,32.3,38.7,22.6,3.2,3.2]},
+    "Project Management":{n:22,v:[90.9,40.9,40.9,0.0,4.5,0.0]},
+    "Supplement":{n:20,v:[85.0,50.0,35.0,15.0,0.0,10.0]},
+    "T-AOS":{n:15,v:[80.0,53.3,20.0,0.0,0.0,6.7]},
+    "Accounting":{n:13,v:[69.2,30.8,7.7,38.5,30.8,7.7]},
+    "USCIS Interview":{n:13,v:[100.0,53.8,15.4,0.0,30.8,7.7]},
+    "Renewals":{n:11,v:[81.8,72.7,54.5,18.2,45.5,9.1]},
+    "Business Intelligence - Shared":{n:8,v:[75.0,37.5,12.5,25.0,12.5,0.0]},
+    "Executive":{n:8,v:[100.0,25.0,50.0,0.0,12.5,0.0]},
+    "Corporate Real Estate":{n:8,v:[75.0,37.5,37.5,37.5,37.5,25.0]},
+    "Staff Augmentation":{n:5,v:[60.0,20.0,20.0,0.0,60.0,20.0]},
+    "Product Management":{n:2,v:[100.0,100.0,100.0,0.0,0.0,50.0]},
+  },
   openText: {
     recent: {
       question: "Is there a recent situation where you wish the firm had communicated sooner or more clearly?",
@@ -195,6 +245,69 @@ const SurveyCard = ({title, subtitle, children}) => (
     {children}
   </div>
 );
+
+const heatColor = (pct) => {
+  const t = Math.max(0, Math.min(100, pct)) / 100;
+  const r = Math.round(240 + (19 - 240) * t);
+  const g = Math.round(253 + (78 - 253) * t);
+  const b = Math.round(250 + (74 - 250) * t);
+  return `rgb(${r},${g},${b})`;
+};
+
+const SurveyHeatmap = ({title, subtitle, cols, matrix}) => {
+  const depts = Object.keys(matrix);
+  const cellW = 78;
+  return (
+    <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #E2E8F0",padding:"18px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
+      <h3 style={{fontSize:14,fontWeight:700,color:"#0F172A",margin:0}}>{title}</h3>
+      {subtitle && <p style={{fontSize:11.5,color:"#94A3B8",margin:"3px 0 14px"}}>{subtitle}</p>}
+
+      <div style={{overflowX:"auto",border:"1px solid #E2E8F0",borderRadius:8}}>
+        <table style={{borderCollapse:"separate",borderSpacing:0,fontSize:11.5,minWidth:"100%"}}>
+          <thead>
+            <tr style={{background:"#F8FAFC"}}>
+              <th style={{textAlign:"left",padding:"10px 12px",position:"sticky",left:0,background:"#F8FAFC",zIndex:2,borderBottom:"1.5px solid #E2E8F0",fontWeight:700,color:"#334155",minWidth:170}}>Department</th>
+              <th style={{textAlign:"right",padding:"10px 8px",background:"#F8FAFC",borderBottom:"1.5px solid #E2E8F0",fontWeight:700,color:"#334155",minWidth:46}}>n</th>
+              {cols.map(c=>(
+                <th key={c} style={{textAlign:"center",padding:"10px 6px",background:"#F8FAFC",borderBottom:"1.5px solid #E2E8F0",fontWeight:700,color:"#334155",width:cellW,minWidth:cellW,fontSize:11,lineHeight:1.3}}>{c}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {depts.map((d, di)=>{
+              const row = matrix[d];
+              return (
+                <tr key={d}>
+                  <td style={{padding:"7px 12px",position:"sticky",left:0,background:"#fff",zIndex:1,borderBottom:"1px solid #F1F5F9",fontWeight:600,color:"#0F172A",fontSize:12}}>{d}</td>
+                  <td style={{padding:"7px 8px",textAlign:"right",borderBottom:"1px solid #F1F5F9",color:"#64748B",fontVariantNumeric:"tabular-nums"}}>{row.n}</td>
+                  {row.v.map((pct, ci)=>{
+                    const bg = heatColor(pct);
+                    const fg = pct >= 55 ? "#fff" : "#0F172A";
+                    return (
+                      <td key={ci} title={`${d} · ${cols[ci]}: ${pct}%`} style={{padding:"7px 4px",textAlign:"center",background:bg,color:fg,borderBottom:"1px solid #F1F5F9",fontWeight:600,fontVariantNumeric:"tabular-nums"}}>
+                        {pct.toFixed(0)}%
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Legend */}
+      <div style={{display:"flex",alignItems:"center",gap:10,marginTop:12,fontSize:11,color:"#64748B"}}>
+        <span style={{fontWeight:600}}>% of department's respondents who selected each option</span>
+        <span style={{display:"inline-flex",alignItems:"center",gap:4,marginLeft:"auto"}}>
+          <span>0%</span>
+          <span style={{display:"inline-block",width:120,height:10,background:"linear-gradient(to right, rgb(240,253,250), rgb(19,78,74))",borderRadius:5,border:"1px solid #E2E8F0"}}/>
+          <span>100%</span>
+        </span>
+      </div>
+    </div>
+  );
+};
 
 const SENTIMENT_STYLE = {
   positive: {color:"#16A34A", bg:"#F0FDF4", label:"Positive"},
@@ -346,6 +459,26 @@ const SurveyResults = () => {
         <SurveyTextCard question={S.openText.recent.question} noConcern={S.openText.recent.noConcern} substantive={S.openText.recent.substantive} sentiment={S.openText.recent.sentiment} topThemes={S.openText.recent.topThemes} samples={S.openText.recent.samples} total={T}/>
         <SurveyTextCard question={S.openText.improve.question} noConcern={S.openText.improve.noConcern} substantive={S.openText.improve.substantive} sentiment={S.openText.improve.sentiment} topThemes={S.openText.improve.topThemes} samples={S.openText.improve.samples} total={T}/>
         <SurveyTextCard question={S.openText.anything.question} noConcern={S.openText.anything.noConcern} substantive={S.openText.anything.substantive} sentiment={S.openText.anything.sentiment} topThemes={S.openText.anything.topThemes} samples={S.openText.anything.samples} total={T}/>
+      </div>
+
+      {/* CROSS-TABULATIONS BY DEPARTMENT */}
+      <div style={{marginTop:30,marginBottom:14}}>
+        <h3 style={{fontSize:16,fontWeight:800,color:"#0F172A"}}>Cross-Tabulation by Department</h3>
+        <p style={{fontSize:12.5,color:"#64748B",marginTop:3}}>Each cell = % of that department's respondents who selected the option · normalized so small departments aren't washed out</p>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:16}}>
+        <SurveyHeatmap
+          title="Events Employees Want Updates About × Department"
+          subtitle="Sorted by department size · darker = higher share of that department picked this event type"
+          cols={S.crosstabEventsCols}
+          matrix={S.crosstabEvents}
+        />
+        <SurveyHeatmap
+          title="Preferred Communication Channels × Department"
+          subtitle="Sorted by department size · darker = higher share of that department prefers this channel"
+          cols={S.crosstabChannelsCols}
+          matrix={S.crosstabChannels}
+        />
       </div>
 
       <p style={{textAlign:"center",fontSize:11.5,color:"#94A3B8",marginTop:22}}>
